@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <title></title>
+  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no;" />
+	<meta charset="utf-8">
+
+
+	<!-- iPad/iPhone specific css below, add after your main css >
+	<link rel="stylesheet" media="only screen and (max-device-width: 1024px)" href="ipad.css" type="text/css" />		
+	<link rel="stylesheet" media="only screen and (max-device-width: 480px)" href="iphone.css" type="text/css" />		
+	-->
+	<!-- If your application is targeting iOS BEFORE 4.0 you MUST put json2.js from http://www.JSON.org/json2.js into your www directory and include it here -->
+	<script type="text/javascript" charset="utf-8" src="cordova-1.5.0.js"></script>
+    <script type="text/javascript" src="kinetic-v3.8.0.js"></script>
+        <script>
+            var x0 = 60;
+            var y0 = 125;
+            var h = 70;
+            var xcenters = [0 + 35, 70 + 35, 140 + 35, 0 + 35, 70 + 35, 140 + 35, 0 + 35, 70 + 35, 140 + 35];
+            var ycenters = [0 + 35, 0 + 35, 0 + 35, 70 + 35, 70 + 35, 70 + 35, 140 + 35, 140 + 35, 140 + 35];
+            //var xknights = [0,  
+            var stage;
+            var knightLayer;
+            var cellLayer;
+            var messageLayer;
+            var knights_no = 0;
+            var images = {};
+            var sources = {
+                white: "images/white-knight.png", 
+                black: "images/black-knight.png"
+            };
+            var startinx;
+            var xstart, ystart;
+            var states = [2, 0, 2, 0, 0, 0, 1, 0, 1];
+            var finalstates = [1, 0, 1, 0, 0, 0, 2, 0, 2]; 
+            var validmoves = new Object();
+            validmoves['0'] = [5, 7];
+            validmoves['1'] = [6, 8];
+            validmoves['2'] = [3, 7];
+            validmoves['3'] = [2, 8];
+            validmoves['4'] = [-1]; 
+            validmoves['5'] = [0, 6];
+            validmoves['6'] = [1, 5];
+            validmoves['7'] = [0, 2];
+            validmoves['8'] = [1, 3];
+            var nummoves = 0;
+            
+            function writeMessage(messageLayer, knight, message) {
+                var context = messageLayer.getContext();
+                messageLayer.clear();
+                context.font = "18pt Calibri";
+                context.fillStyle = "black";
+                var k = knight;
+                var text = k.x + " " + k.y + " " + message;
+                context.fillText(text, 0, 0);
+            }
+            
+            //Check if the player wins
+            function checkWin() {
+                //Check if player reaches final state
+                for (i = 0; i < 9; i++) {
+                    if (states[i] != finalstates[i])
+                    return false;
+                }
+                return true;
+            }
+            
+            //check if the knight move is valid
+            function validMove(inx){
+                //console.log("validmove: %d", validmoves[startinx.toString()].indexOf(inx));
+                if (validmoves[startinx.toString()].indexOf(inx) !== -1){
+                    return true;
+                }
+                return false;
+            }
+            
+            //compute index
+            function computeIndex(x, y){
+                c = Math.floor((x - h/2)/h);
+                r = Math.floor((y - h/2)/h);
+                return r*3 + c;
+            }
+            
+            //handle the next move
+            function moveKnight(x, y) {
+                var inx = computeIndex(x, y);
+                //console.log("moveKnight: destx = %d, desty = %d, destinx = %d, startinx = %d", x, y, inx, startinx);
+                //console.log("states[destinx]=%d", states[inx]);
+                if(states[inx] == 0 && inx != startinx){
+                    if(validMove(inx)){
+                        nummoves++;
+                        states[inx] = states[startinx];
+                        states[startinx] = 0;
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            //find the closes cell to the given knight
+            function findClosestCell(knight){
+                var inx = 0;
+                min_dist = Math.pow(knight.x - xcenters[0], 2) + Math.pow(knight.y - ycenters[0], 2);
+                for(var i = 1; i < 9; i++){
+                    var dist_ = Math.pow(knight.x - xcenters[i], 2) + Math.pow(knight.y - ycenters[i], 2)
+                    if(dist_ < min_dist){
+                        inx = i;
+                        min_dist = dist_;
+                    }
+                }
+                return inx;
+            }
+                            
+            function init(){
+                stage = new Kinetic.Stage("container", 320, 480);
+                cellLayer = new Kinetic.Layer();
+                knightLayer = new Kinetic.Layer();
+                messageLayer = new Kinetic.Layer();
+                drawCell();
+                //load images
+                loadImages();
+            }
+                            
+            function drawCell(){                
+                for(var n = 0; n < 9; n++) {
+                    // anonymous function to induce scope
+                    (function() {
+                     var i = n;
+                     r = Math.floor(i/3);
+                     c = i % 3;
+                     var box = new Kinetic.Rect({
+                                           x: c*h + h/2,
+                                           y: r*h + h/2,
+                                           fill: "white",
+                                           stroke: "black",
+                                           strokeWidth: 4,
+                                           draggable: true,
+                                           width: h,
+                                           height: h
+                                           });
+                     cellLayer.add(box);
+                     })();
+                }
+            }
+            
+            //load images
+            function loadImages(){
+                var loadedImages = 0;
+                for(var src in sources){
+                    images[src] = new Image();
+                    images[src].onload = function(){
+                        if (++loadedImages >= 2) {
+                            //console.log("image loading completed: %d images", loadedImages);
+                            setupKnights();
+                        }
+                    };
+                    images[src].src= sources[src];
+                }
+            }
+                            
+            function drawKnight(imageObj, x_, y_){
+                 //console.log("x: %d, y: %d", x_, y_);
+                 // knight
+                 var knight = new Kinetic.Image({   
+                                                image: imageObj,
+                                                x: 0,
+                                                y: 0,
+                                                width: 64,
+                                                height: 64,
+                                                position: 'relative'
+                                                });
+                 
+                //console.log("knight.x: %d, knight.y: %d", x_, y_);
+                // enable drag and drop
+                knight.draggable(true);
+                
+                knight.x = x_;
+                knight.y = y_;
+                 
+                 // add cursor styling
+                 knight.on("mouseover", function(){
+                           document.body.style.cursor = "pointer";
+                           });
+                 knight.on("mouseout", function(){
+                           document.body.style.cursor = "default";
+                           });
+                 // mousedown event
+                 knight.on("mousedown", function() {
+                           //console.log("knight.x: %d, knight.y: %d", knight.x, knight.y);
+                           startinx = findClosestCell(knight);//computeIndex(knight.x + h/2, knight.y + h/2);   //latest fix!
+                           xstart = xcenters[startinx];// - h/2;
+                           ystart = ycenters[startinx];// - h/2;
+                           //console.log("xstart: %d, ystart: %d, startinx: %d", xstart, ystart, startinx);
+                           });
+                 //drag event
+                 knight.on("dragend", function() {
+                           //writeMessage(messageLayer, knight, "dragend");
+                           var inx = findClosestCell(knight);
+                           //alert(inx + " " + xcenters[inx] + " " + ycenters[inx]);
+                           //console.log("closest inx: %d", inx);
+                           //handle the knight move
+                           if(moveKnight(xcenters[inx], ycenters[inx])){
+                               //console.log("change index to: %d", inx);
+                               knight.x = xcenters[inx];
+                               knight.y = ycenters[inx];
+                               knightLayer.draw();
+                               //console.log("valid move!");
+                               if (checkWin()) {
+                                if (nummoves <= 20) {
+                                    alert("Congratulations! You won after " + nummoves + " moves.");
+                                }
+                                else {
+                                    alert("Sorry you lost after " + nummoves + " moves");
+                                }
+                           }
+                           }else{
+                                knight.x = xstart;
+                                knight.y = ystart;
+                                knightLayer.draw();
+                                //console.log("invalid move: x = %d, y = %d", xstart, ystart);
+                           }
+                            
+                });
+                 
+                knightLayer.add(knight);
+                knights_no++;
+                if(knights_no == 4){
+                    //console.log("adding cell layer");
+                    stage.add(cellLayer);
+                    //console.log("adding knight layer");
+                    stage.add(knightLayer);
+                }
+            }
+            
+            //add all images
+            function setupKnights(){
+                dropKnight(0, "b");
+                dropKnight(2, "b");
+                dropKnight(6, "w");
+                dropKnight(8, "w");
+            }
+            
+            //drop a knigh on a given location
+            function dropKnight(i, color){
+                r = Math.floor(i/3);
+                c = i % 3;
+                x = c*h + h/2;
+                y = r*h + h/2;
+                //console.log("r: %d, c: %d, x: %d, y: %d", r, c, x, y);
+                if(color == "w"){
+                    drawKnight(images['white'], x, y);
+                }else{
+                    drawKnight(images['black'], x, y);
+                }
+            }
+            
+            window.onload = function(){
+                init();
+            };
+            
+            </script>
+  </head>
+    <body>
+	<h4>How to play four knights puzzle?</h4>
+	<p>
+	This puzzle is very easy to play. The goal is to swap the positions of black knights with the white ones with minimum number of moves. Therefore, at the end the black knights should be placed on the bottom row (in corner squares) whereas the white ones on the top row (in corner squares). The knight move is similar to the regular chess where a knight can make an "L" shape move.
+	</p>
+        <div id="container">
+        </div>
+    </body>
+</html>
