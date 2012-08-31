@@ -6,3 +6,5 @@ This is an implementation of four knights puzzle for iOS devices (iPhone/iPad) u
 
 How to play the game?
 This puzzle is very easy to play. The goal is to swap the positions of black knights with the white ones with minimum number of moves. Therefore, at the end the black knights should be placed on the bottom row (in corner squares) whereas the white ones on the top row (in corner squares). The knight move is similar to the regular chess where a knight can make an "L" shape move.
+
+Contributer: Kazem Jahanbakhsh and Khalegh Mamakani
